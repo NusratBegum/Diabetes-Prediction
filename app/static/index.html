@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diabetes Risk API</title>
+<meta name="description" content="FastAPI + scikit-learn model-serving demo on the Pima Indians Diabetes dataset.">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #16181d; --muted: #5d6470; --line: #e3e6eb;
+    --accent: #2a63d6; --accent-ink: #ffffff; --track: #e8ebf0; --err: #c0362c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111317; --card: #1a1d23; --ink: #eef0f3; --muted: #9aa2ae; --line: #2b3039;
+            --accent: #5b8cf0; --accent-ink: #0d0f12; --track: #2b3039; --err: #f07b70; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.6rem; margin: 0; }
+  h2 { font-size: 1.05rem; margin: 0 0 12px; }
+  .sub { color: var(--muted); margin: 4px 0 20px; }
+  .links a { color: var(--accent); margin-left: 14px; font-size: .95rem; }
+  .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 3px; }
+  input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+          background: var(--bg); color: var(--ink); font: inherit; }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button { margin-top: 16px; padding: 10px 16px; border-radius: 8px; border: 0; font: inherit; cursor: pointer;
+           background: var(--accent); color: var(--accent-ink); font-weight: 600; width: 100%; }
+  .prob { font: 700 2.4rem/1.1 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 4px 0; }
+  .meter { height: 10px; border-radius: 5px; background: var(--track); overflow: hidden; margin: 8px 0 6px; }
+  .meter > div { height: 100%; width: 0; background: var(--accent); border-radius: 5px; transition: width .4s ease; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .err { color: var(--err); font-size: .9rem; min-height: 1.3rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  td { padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  td.num { text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .note { margin-top: 16px; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Diabetes Risk API</h1>
+    <nav class="links"><a href="/docs">API docs</a><a href="/model">Model card (JSON)</a><a href="https://github.com/NusratBegum/Diabetes-Prediction">Source</a></nav>
+  </header>
+  <p class="sub">scikit-learn pipeline served by FastAPI · Pydantic-validated input · <code>POST /predict</code></p>
+
+  <div class="grid">
+    <form class="card" id="form">
+      <h2>Patient measurements</h2>
+      <div class="fields" id="fields"></div>
+      <button type="submit">Predict</button>
+      <p class="err" id="err" role="status"></p>
+    </form>
+
+    <div>
+      <section class="card" aria-live="polite">
+        <h2>Prediction</h2>
+        <p class="muted" id="label">Submit the form to get a probability.</p>
+        <p class="prob" id="prob">–</p>
+        <div class="meter" aria-hidden="true"><div id="bar"></div></div>
+        <p class="muted" id="risk"></p>
+      </section>
+      <section class="card" style="margin-top:16px">
+        <h2>Held-out test set</h2>
+        <table id="metrics"><tbody><tr><td class="muted">Loading…</td></tr></tbody></table>
+      </section>
+    </div>
+  </div>
+
+  <p class="note">Trained on 768 rows of the Pima Indians Diabetes dataset (NIDDK). A learning project, not a medical device or advice.</p>
+</main>
+<script>
+  const FIELDS = [
+    ['pregnancies', 'Pregnancies', 2, 1],
+    ['glucose', 'Glucose (mg/dL)', 138, 'any'],
+    ['blood_pressure', 'Diastolic BP (mm Hg)', 72, 'any'],
+    ['skin_thickness', 'Skin thickness (mm)', 30, 'any'],
+    ['insulin', 'Insulin (µU/mL)', 120, 'any'],
+    ['bmi', 'BMI', 33.1, 'any'],
+    ['diabetes_pedigree', 'Pedigree function', 0.45, 'any'],
+    ['age', 'Age', 41, 1],
+  ];
+  const $ = (id) => document.getElementById(id);
+  $('fields').innerHTML = FIELDS.map(([k, label, v, step]) =>
+    `<div><label for="${k}">${label}</label><input id="${k}" name="${k}" type="number" step="${step}" value="${v}" required></div>`).join('');
+
+  $('form').onsubmit = async (e) => {
+    e.preventDefault();
+    $('err').textContent = '';
+    const body = Object.fromEntries(FIELDS.map(([k]) => [k, Number($(k).value)]));
+    try {
+      const res = await fetch('/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(Array.isArray(data.detail) ? data.detail.map((d) => `${d.loc.at(-1)}: ${d.msg}`).join('; ') : data.detail);
+      const pct = Math.round(data.probability * 100);
+      $('label').textContent = 'Predicted probability of diabetes';
+      $('prob').textContent = `${pct}%`;
+      $('bar').style.width = `${pct}%`;
+      $('risk').textContent = `Classified as ${data.risk} risk (threshold 50%).`;
+    } catch (err) { $('err').textContent = err.message; }
+  };
+
+  fetch('/model').then((r) => r.json()).then((m) => {
+    const t = m.test;
+    const rows = [['ROC AUC', t.roc_auc], ['Accuracy', t.accuracy], ['Precision', t.precision], ['Recall', t.recall], ['F1', t.f1],
+                  ['Test rows', m.rows.test]];
+    $('metrics').innerHTML = '<tbody>' + rows.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('') + '</tbody>';
+  }).catch(() => { $('metrics').innerHTML = '<tbody><tr><td class="muted">Could not load metrics.</td></tr></tbody>'; });
+</script>
+</body>
+</html>
