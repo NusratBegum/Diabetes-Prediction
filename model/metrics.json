@@ -1,0 +1,35 @@
+{
+  "trained_at": "2026-10-26T07:38Z",
+  "sklearn_version": "1.6.1",
+  "rows": {
+    "train": 614,
+    "test": 154
+  },
+  "positive_rate": 0.349,
+  "best_params": {
+    "model__max_depth": 6,
+    "model__min_samples_leaf": 1,
+    "model__n_estimators": 200
+  },
+  "cv_roc_auc": 0.838,
+  "test": {
+    "roc_auc": 0.827,
+    "accuracy": 0.76,
+    "precision": 0.639,
+    "recall": 0.722,
+    "f1": 0.678
+  },
+  "feature_importance": {
+    "glucose": 0.276,
+    "bmi": 0.153,
+    "age": 0.118,
+    "insulin": 0.083,
+    "diabetes_pedigree": 0.075,
+    "glucose_insulin_ratio": 0.069,
+    "bmi_category": 0.058,
+    "age_group": 0.05,
+    "skin_thickness": 0.044,
+    "pregnancies": 0.041,
+    "blood_pressure": 0.033
+  }
+}
