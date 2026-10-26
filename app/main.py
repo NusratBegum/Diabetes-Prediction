@@ -57,6 +57,6 @@ def predict(features: PatientFeatures):
     probability = float(get_model().predict_proba(row)[0, 1])
     return Prediction(
         risk="high" if probability >= 0.5 else "low",
-        probability=round(probability, 3),
+        probability=probability,
         model_version=get_metrics()["trained_at"],
     )

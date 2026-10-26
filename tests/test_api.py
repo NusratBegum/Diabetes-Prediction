@@ -34,7 +34,7 @@ def test_predict_returns_probability():
     assert response.status_code == 200
     body = response.json()
     assert 0 <= body["probability"] <= 1
-    assert body["risk"] == ("high" if body["probability"] >= 0.5 else "low")
+    assert body["risk"] == ("high" if body["probability"] >= 0.5 else "low")  # unrounded, so label and number agree
 
 
 def test_higher_glucose_raises_risk():
