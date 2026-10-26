@@ -4,7 +4,7 @@
 
 A scikit-learn model for diabetes risk, served as a FastAPI service with validated input, a model card endpoint, tests and CI. It started as a notebook and Gradio demo and was rebuilt as a production-style model-serving API.
 
-**Live demo:** https://diabetes-risk-api.vercel.app · **API docs:** https://diabetes-risk-api.vercel.app/docs
+**Live demo:** https://nusrat-diabetes-api.vercel.app · **API docs:** https://nusrat-diabetes-api.vercel.app/docs
 
 ![Web client](docs/web-client.png)
 
@@ -53,7 +53,7 @@ The model is a single scikit-learn `Pipeline`, so the API passes the eight raw m
 Input is validated by Pydantic with physiological ranges (for example glucose 0–250 mg/dL, age 21–100). Out-of-range or missing fields return `422`.
 
 ```bash
-curl -X POST https://diabetes-risk-api.vercel.app/predict \
+curl -X POST https://nusrat-diabetes-api.vercel.app/predict \
   -H "Content-Type: application/json" \
   -d '{"pregnancies":2,"glucose":138,"blood_pressure":72,"skin_thickness":30,"insulin":120,"bmi":33.1,"diabetes_pedigree":0.45,"age":41}'
 ```
